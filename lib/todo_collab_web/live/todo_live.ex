@@ -7,7 +7,9 @@ defmodule TodoCollabWeb.TodoLive do
      assign(socket,
        modal: false,
        slide_over: false,
-       pagination_page: 1
+       pagination_page: 1,
+       todos: [%{id: "1", text: "todo 1", done: false}, %{id: "2", text: "todo 2", done: true}],
+       total_added: 0
      )}
   end
 
@@ -35,14 +37,15 @@ defmodule TodoCollabWeb.TodoLive do
       <.form
         :let={f}
         multipart
-        as={:user}
+        as={:todo_form}
+        phx-submit="create_todo"
         for={
           %Ecto.Changeset{
             action: :update,
             data: %{name: ""},
             errors: [
-              text_input_with_error: {"can't be blank", [validation: :required]},
-              text_input_with_error: {"must be at least 2 characters", [validation: :minimum]},
+              error_add_new_todo: {"can't be blank", [validation: :required]},
+              error_add_new_todo: {"must be at least 2 characters", [validation: :minimum]},
               number_input_with_error: {"can't be blank", [validation: :required]},
               email_input_with_error: {"can't be blank", [validation: :required]},
               password_input_with_error: {"can't be blank", [validation: :required]},
@@ -71,24 +74,92 @@ defmodule TodoCollabWeb.TodoLive do
           }
         }
       >
-        <div>
-          <.form_field
-            type="checkbox_group"
-            label="Checkbox group with row layout"
-            layout={:row}
-            form={f}
-            field={:checkbox_group_row}
-            options={[
-              {"Option 1", "option_1"},
-              {"Option 2", "option_2"},
-              {"Option 3", "option_3"},
-              {"Option 4", "option_4"}
-            ]}
-          />
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <.form_field
+              type="text_input"
+              form={f}
+              field={:add_new_todo}
+              placeholder="Placeholder"
+              phx-change="validate_new_todo"
+            />
+            <button class="btn btn-blue" type="submit" phx-disable-with="Adding...">
+              Add new todo
+            </button>
+          </div>
         </div>
+
+        <%= render_todos(assigns, f) %>
       </.form>
     </div>
     """
+  end
+
+  defp render_todos(assigns, form) do
+    ~H"""
+    <h1>My TODOs</h1>
+    <div class="container">
+      <%= for todo <- @todos do %>
+        <.form_field
+          type="checkbox"
+          form={form}
+          field={:checkbox_form}
+          label={todo.text}
+          value={to_string(todo.done)}
+          class="!line-through"
+          phx-click="inc"
+          phx-value-myvar1={todo.id}
+        />
+      <% end %>
+    </div>
+    """
+  end
+
+  def handle_event(
+        "create_todo",
+        %{"todo_form" => %{"add_new_todo" => new_todo}},
+        socket = %{assigns: %{todos: todos, total_added: total_added}}
+      ) do
+    socket =
+      socket
+      |> assign(todos: todos ++ [%{id: "added-#{total_added + 1}", text: new_todo, done: false}])
+      |> assign(total_added: total_added + 1)
+
+    {:noreply, socket}
+  end
+
+  def handle_event("validate_new_todo", params, socket) do
+    IO.inspect(params, label: "VALIDATING NEW TODO")
+
+    {:noreply, socket}
+  end
+
+  def handle_event("inc", %{"myvar1" => id}, socket = %{assigns: %{todos: todos}}) do
+    IO.inspect(todos, label: "todos initial")
+
+    todos =
+      Enum.reduce(todos, [], fn todo, acc ->
+        todo =
+          cond do
+            todo.id == id -> %{todo | done: !todo.done}
+            true -> todo
+          end
+
+        acc ++ [todo]
+      end)
+
+    IO.inspect(todos, label: "todos final")
+
+    socket = assign(socket, todos: todos)
+
+    {:noreply, socket}
+  end
+
+  def handle_event("change_checkbox", params, socket) do
+    IO.inspect(params, label: "CHANGING CHECKBOX")
+    IO.inspect(socket.assigns, label: "CHANGING CHECKBOX")
+
+    {:noreply, socket}
   end
 
   @impl true
