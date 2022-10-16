@@ -100,17 +100,39 @@ defmodule TodoCollabWeb.TodoLive do
     <h1>My TODOs</h1>
     <div class="container">
       <%= for todo <- @todos do %>
-        <.form_field
-          type="checkbox"
-          form={form}
-          field={:checkbox_form}
-          label={todo.text}
-          value={to_string(todo.done)}
-          class="!line-through"
-          phx-click="inc"
-          phx-value-myvar1={todo.id}
-        />
+        <div style="display: flex; align-items:baseline;">
+          <.form_field
+            id={todo.id}
+            type="checkbox"
+            form={form}
+            field={:checkbox_form}
+            label={todo.text}
+            value={to_string(todo.done)}
+            class="!line-through"
+            phx-click="toggle_checkbox"
+            phx-value-todo-id={todo.id}
+          />
+
+          <%= render_trash(assigns, todo) %>
+        </div>
       <% end %>
+    </div>
+    """
+  end
+
+  defp render_trash(assigns, todo) do
+    ~H"""
+    <div>
+      <.icon_button
+        size="md"
+        link_type="button"
+        type="button"
+        color="info"
+        phx-click="delete_todo"
+        phx-value-todo-id={todo.id}
+      >
+        <Heroicons.trash solid />
+      </.icon_button>
     </div>
     """
   end
@@ -125,6 +147,7 @@ defmodule TodoCollabWeb.TodoLive do
       |> assign(todos: todos ++ [%{id: "added-#{total_added + 1}", text: new_todo, done: false}])
       |> assign(total_added: total_added + 1)
 
+    IO.inspect("CREATING TODO")
     {:noreply, socket}
   end
 
@@ -134,7 +157,7 @@ defmodule TodoCollabWeb.TodoLive do
     {:noreply, socket}
   end
 
-  def handle_event("inc", %{"myvar1" => id}, socket = %{assigns: %{todos: todos}}) do
+  def handle_event("toggle_checkbox", %{"todo-id" => id}, socket = %{assigns: %{todos: todos}}) do
     IO.inspect(todos, label: "todos initial")
 
     todos =
@@ -158,6 +181,22 @@ defmodule TodoCollabWeb.TodoLive do
   def handle_event("change_checkbox", params, socket) do
     IO.inspect(params, label: "CHANGING CHECKBOX")
     IO.inspect(socket.assigns, label: "CHANGING CHECKBOX")
+
+    {:noreply, socket}
+  end
+
+  def handle_event("delete_todo", %{"todo-id" => id}, socket = %{assigns: %{todos: todos}}) do
+    todos =
+      Enum.reduce(todos, [], fn todo, acc ->
+        cond do
+          todo.id == id -> acc
+          true -> acc ++ [todo]
+        end
+      end)
+
+    IO.inspect(todos, label: "todos final")
+
+    socket = assign(socket, todos: todos)
 
     {:noreply, socket}
   end
