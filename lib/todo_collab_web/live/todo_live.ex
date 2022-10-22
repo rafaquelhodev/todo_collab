@@ -1,17 +1,33 @@
 defmodule TodoCollabWeb.TodoLive do
   use TodoCollabWeb, :live_view
 
+  alias TodoCollab.Todos
+
   @impl true
   def mount(_params, _session, socket) do
+    pid = self()
+
+    Task.start(fn ->
+      todos = Todos.list_todos()
+      send(pid, %{loaded_todos: todos})
+    end)
+
     {:ok,
      assign(socket,
        modal: false,
        slide_over: false,
        pagination_page: 1,
-       todos: [%{id: "1", text: "todo 1", done: false}, %{id: "2", text: "todo 2", done: true}],
+       todos: [],
        total_added: 0,
        to_be_removed: []
      )}
+  end
+
+  @impl true
+  def handle_info(%{loaded_todos: todos}, socket) do
+    socket = assign(socket, todos: todos)
+
+    {:noreply, socket}
   end
 
   @impl true
@@ -103,7 +119,7 @@ defmodule TodoCollabWeb.TodoLive do
       <%= for todo <- @todos do %>
         <div style="display: flex; align-items:baseline;">
           <.form_field
-            id={todo.id}
+            id={todo.uuid}
             type="checkbox"
             form={form}
             field={:checkbox_form}
@@ -111,7 +127,7 @@ defmodule TodoCollabWeb.TodoLive do
             value={to_string(todo.done)}
             class="!line-through"
             phx-click="toggle_checkbox"
-            phx-value-todo-id={todo.id}
+            phx-value-todo-id={todo.uuid}
           />
 
           <%= render_trash(assigns, todo) %>
@@ -130,7 +146,7 @@ defmodule TodoCollabWeb.TodoLive do
         type="button"
         color="info"
         phx-click="delete_todo"
-        phx-value-todo-id={todo.id}
+        phx-value-todo-id={todo.uuid}
       >
         <Heroicons.trash solid />
       </.icon_button>
@@ -145,7 +161,9 @@ defmodule TodoCollabWeb.TodoLive do
       ) do
     socket =
       socket
-      |> assign(todos: todos ++ [%{id: "added-#{total_added + 1}", text: new_todo, done: false}])
+      |> assign(
+        todos: todos ++ [%{uuid: "added-#{total_added + 1}", text: new_todo, done: false}]
+      )
       |> assign(total_added: total_added + 1)
 
     IO.inspect("CREATING TODO")
@@ -165,7 +183,7 @@ defmodule TodoCollabWeb.TodoLive do
       Enum.reduce(todos, [], fn todo, acc ->
         todo =
           cond do
-            todo.id == id -> %{todo | done: !todo.done}
+            todo.uuid == id -> %{todo | done: !todo.done}
             true -> todo
           end
 
@@ -194,7 +212,7 @@ defmodule TodoCollabWeb.TodoLive do
     todos =
       Enum.reduce(todos, [], fn todo, acc ->
         cond do
-          todo.id == id -> acc
+          todo.uuid == id -> acc
           true -> acc ++ [todo]
         end
       end)
