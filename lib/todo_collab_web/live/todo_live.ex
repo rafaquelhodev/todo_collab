@@ -1,16 +1,12 @@
 defmodule TodoCollabWeb.TodoLive do
   use TodoCollabWeb, :live_view
 
+  alias TodoCollab.Lists
   alias TodoCollab.Todos
 
   @impl true
-  def mount(_params, _session, socket) do
-    pid = self()
-
-    Task.start(fn ->
-      todos = Todos.list_todos()
-      send(pid, %{loaded_todos: todos})
-    end)
+  def mount(params, _session, socket) do
+    load_todos(params)
 
     {:ok,
      assign(socket,
@@ -18,6 +14,7 @@ defmodule TodoCollabWeb.TodoLive do
        slide_over: false,
        pagination_page: 1,
        todos: [],
+       list_uid: nil,
        total_added: 0,
        to_be_removed: []
      )}
@@ -232,6 +229,18 @@ defmodule TodoCollabWeb.TodoLive do
   def handle_event("close_slide_over", _, socket) do
     {:noreply, push_patch(socket, to: "/live")}
   end
+
+  defp load_todos(%{"list" => list_uid}) do
+    pid = self()
+
+    Task.start(fn ->
+      list_uid = Lists.get_id(list_uid)
+      todos = Todos.list_todos(list_uid)
+      send(pid, %{loaded_todos: todos, list_uid: list_uid})
+    end)
+  end
+
+  defp load_todos(_params), do: :noop
 
   defp update_to_be_removed(id, to_be_removed) do
     case exists_in_db?(id) do
