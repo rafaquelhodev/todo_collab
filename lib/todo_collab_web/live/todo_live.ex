@@ -9,7 +9,8 @@ defmodule TodoCollabWeb.TodoLive do
        slide_over: false,
        pagination_page: 1,
        todos: [%{id: "1", text: "todo 1", done: false}, %{id: "2", text: "todo 2", done: true}],
-       total_added: 0
+       total_added: 0,
+       to_be_removed: []
      )}
   end
 
@@ -185,7 +186,11 @@ defmodule TodoCollabWeb.TodoLive do
     {:noreply, socket}
   end
 
-  def handle_event("delete_todo", %{"todo-id" => id}, socket = %{assigns: %{todos: todos}}) do
+  def handle_event(
+        "delete_todo",
+        %{"todo-id" => id},
+        socket = %{assigns: %{todos: todos, to_be_removed: to_be_removed}}
+      ) do
     todos =
       Enum.reduce(todos, [], fn todo, acc ->
         cond do
@@ -194,9 +199,9 @@ defmodule TodoCollabWeb.TodoLive do
         end
       end)
 
-    IO.inspect(todos, label: "todos final")
+    to_be_removed = update_to_be_removed(id, to_be_removed)
 
-    socket = assign(socket, todos: todos)
+    socket = assign(socket, todos: todos, to_be_removed: to_be_removed)
 
     {:noreply, socket}
   end
@@ -209,4 +214,14 @@ defmodule TodoCollabWeb.TodoLive do
   def handle_event("close_slide_over", _, socket) do
     {:noreply, push_patch(socket, to: "/live")}
   end
+
+  defp update_to_be_removed(id, to_be_removed) do
+    case exists_in_db?(id) do
+      true -> to_be_removed ++ [id]
+      _ -> to_be_removed
+    end
+  end
+
+  defp exists_in_db?("added-" <> _), do: false
+  defp exists_in_db?(_), do: true
 end
