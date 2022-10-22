@@ -7,6 +7,8 @@ defmodule TodoCollab.Todos.Todo do
     field :text, :string
     field :uuid, Ecto.UUID
 
+    belongs_to :list, TodoCollab.Lists.List
+
     timestamps()
   end
 

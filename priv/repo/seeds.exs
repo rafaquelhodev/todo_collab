@@ -10,8 +10,14 @@
 # We recommend using the bang functions (`insert!`, `update!`
 # and so on) as they will fail if something goes wrong.
 
-alias TodoCollab.Todos
+alias TodoCollab.Lists
 
-Todos.create_todo(%{text: "Buy groceries", done: false})
-Todos.create_todo(%{text: "Do laundry", done: true})
-Todos.create_todo(%{text: "Study history", done: false})
+Lists.create(%{
+  name: "Todo Example 1",
+  user_name: "John Doe",
+  todos: [
+    %{text: "Buy groceries", done: false},
+    %{text: "Do laundry", done: true},
+    %{text: "Study history", done: false}
+  ]
+})

@@ -4,10 +4,20 @@ defmodule TodoCollab.Repo.Migrations.CreateTodos do
   def change do
     execute "CREATE EXTENSION IF NOT EXISTS pgcrypto"
 
+    create table(:lists) do
+      add :name, :string
+      add :user_name, :string
+      add :uuid, :uuid, null: false, default: fragment("gen_random_uuid()")
+
+      timestamps()
+    end
+
     create table(:todos) do
       add :text, :string
       add :done, :boolean, default: false, null: false
       add :uuid, :uuid, null: false, default: fragment("gen_random_uuid()")
+
+      add :list_id, references(:lists)
 
       timestamps()
     end
