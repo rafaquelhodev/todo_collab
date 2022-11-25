@@ -104,6 +104,11 @@ defmodule TodoCollabWeb.TodoLive do
         </div>
 
         <%= render_todos(assigns, f) %>
+        <.container class="mt-10">
+          <button class="btn btn-blue" phx-disable-with="Saving..." phx-click="save_list">
+            Save
+          </button>
+        </.container>
       </.form>
     </div>
     """
@@ -218,6 +223,14 @@ defmodule TodoCollabWeb.TodoLive do
 
     socket = assign(socket, todos: todos, to_be_removed: to_be_removed)
 
+    {:noreply, socket}
+  end
+
+  def handle_event(
+        "save_list",
+        _value,
+        socket = %{assigns: %{todos: todos, to_be_removed: to_be_removed}}
+      ) do
     {:noreply, socket}
   end
 
