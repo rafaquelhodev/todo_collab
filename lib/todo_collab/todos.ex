@@ -13,4 +13,10 @@ defmodule TodoCollab.Todos do
     |> Todo.changeset(attrs)
     |> Repo.insert()
   end
+
+  def insert_todos(todos, list_id) do
+    todos = Enum.map(todos, fn todo -> Map.put(todo, :list_id, list_id) end)
+
+    Repo.insert_all(Todo, todos, conflict_target: [:uuid], on_conflict: {:replace, [:text, :done]})
+  end
 end

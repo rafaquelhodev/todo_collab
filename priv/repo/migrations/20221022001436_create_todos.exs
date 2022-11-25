@@ -12,6 +12,8 @@ defmodule TodoCollab.Repo.Migrations.CreateTodos do
       timestamps()
     end
 
+    create unique_index(:lists, [:uuid])
+
     create table(:todos) do
       add :text, :string
       add :done, :boolean, default: false, null: false
@@ -21,5 +23,7 @@ defmodule TodoCollab.Repo.Migrations.CreateTodos do
 
       timestamps()
     end
+
+    create unique_index(:todos, [:uuid])
   end
 end
