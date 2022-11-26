@@ -15,8 +15,20 @@ defmodule TodoCollab.Todos do
   end
 
   def insert_todos(todos, list_id) do
-    todos = Enum.map(todos, fn todo -> Map.put(todo, :list_id, list_id) end)
+    now = NaiveDateTime.utc_now() |> NaiveDateTime.truncate(:second)
 
-    Repo.insert_all(Todo, todos, conflict_target: [:uuid], on_conflict: {:replace, [:text, :done]})
+    todos =
+      Enum.map(todos, fn todo ->
+        todo
+        |> Map.put(:list_id, list_id)
+        |> Map.put(:updated_at, now)
+        |> Map.put(:inserted_at, now)
+      end)
+
+    Repo.insert_all(Todo, todos,
+      conflict_target: [:uuid],
+      on_conflict: {:replace, [:text, :done]},
+      returning: true
+    )
   end
 end
