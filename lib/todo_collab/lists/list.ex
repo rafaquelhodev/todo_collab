@@ -5,7 +5,7 @@ defmodule TodoCollab.Lists.List do
   schema "lists" do
     field :name, :string
     field :user_name, :string
-    field :uuid, Ecto.UUID
+    field :uuid, Ecto.UUID, read_after_writes: true
 
     has_many :todos, TodoCollab.Todos.Todo
 

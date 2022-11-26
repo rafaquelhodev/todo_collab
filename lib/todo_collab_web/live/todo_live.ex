@@ -16,13 +16,14 @@ defmodule TodoCollabWeb.TodoLive do
        todos: [],
        list_uid: nil,
        total_added: 0,
-       to_be_removed: []
+       to_be_removed: [],
+       list_uid: nil
      )}
   end
 
   @impl true
-  def handle_info(%{loaded_todos: todos}, socket) do
-    socket = assign(socket, todos: todos)
+  def handle_info(%{loaded_todos: todos, list_id: list_id}, socket) do
+    socket = assign(socket, todos: todos, list_id: list_id)
 
     {:noreply, socket}
   end
@@ -229,9 +230,30 @@ defmodule TodoCollabWeb.TodoLive do
   def handle_event(
         "save_list",
         _value,
-        socket = %{assigns: %{todos: todos, to_be_removed: to_be_removed}}
+        socket = %{assigns: %{todos: todos, to_be_removed: to_be_removed, list_uid: list_uid}}
       ) do
-    {:noreply, socket}
+    IO.inspect(todos, label: "saving todos")
+    IO.inspect(list_uid, label: "list_uid")
+
+    case list_uid do
+      nil ->
+        list =
+          Lists.create(%{
+            name: "Todo Example 1",
+            user_name: "John Doe",
+            todos: todos
+          })
+
+        IO.inspect(list, label: "added list")
+        list.uid
+
+      _ ->
+        list_id = Lists.get_id(list_uid)
+        Todos.insert_todos(todos, list_id)
+        list_uid
+    end
+
+    {:noreply, assign(socket, list_uid: list_uid)}
   end
 
   @impl true
@@ -247,9 +269,9 @@ defmodule TodoCollabWeb.TodoLive do
     pid = self()
 
     Task.start(fn ->
-      list_uid = Lists.get_id(list_uid)
-      todos = Todos.list_todos(list_uid)
-      send(pid, %{loaded_todos: todos, list_uid: list_uid})
+      list_id = Lists.get_id(list_uid)
+      todos = Todos.list_todos(list_id)
+      send(pid, %{loaded_todos: todos, list_id: list_id})
     end)
   end
 

@@ -5,7 +5,7 @@ defmodule TodoCollab.Todos.Todo do
   schema "todos" do
     field :done, :boolean, default: false
     field :text, :string
-    field :uuid, Ecto.UUID
+    field :uuid, Ecto.UUID, read_after_writes: true
 
     belongs_to :list, TodoCollab.Lists.List
 
