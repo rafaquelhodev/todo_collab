@@ -1,16 +1,33 @@
 defmodule TodoCollabWeb.TodoLive do
   use TodoCollabWeb, :live_view
 
+  alias TodoCollab.Lists
+  alias TodoCollab.Todos
+
+  alias TodoCollabWeb.UseCases.SaveList
+
   @impl true
-  def mount(_params, _session, socket) do
+  def mount(params, _session, socket) do
+    load_todos(params)
+
     {:ok,
      assign(socket,
        modal: false,
        slide_over: false,
        pagination_page: 1,
-       todos: [%{id: "1", text: "todo 1", done: false}, %{id: "2", text: "todo 2", done: true}],
-       total_added: 0
+       todos: [],
+       list_uid: nil,
+       total_added: 0,
+       to_be_removed: [],
+       list_id: nil
      )}
+  end
+
+  @impl true
+  def handle_info(%{loaded_todos: todos, list_id: list_id}, socket) do
+    socket = assign(socket, todos: todos, list_id: list_id)
+
+    {:noreply, socket}
   end
 
   @impl true
@@ -90,6 +107,11 @@ defmodule TodoCollabWeb.TodoLive do
         </div>
 
         <%= render_todos(assigns, f) %>
+        <.container class="mt-10">
+          <button class="btn btn-blue" phx-disable-with="Saving..." phx-click="save_list">
+            Save
+          </button>
+        </.container>
       </.form>
     </div>
     """
@@ -102,7 +124,7 @@ defmodule TodoCollabWeb.TodoLive do
       <%= for todo <- @todos do %>
         <div style="display: flex; align-items:baseline;">
           <.form_field
-            id={todo.id}
+            id={todo.uuid}
             type="checkbox"
             form={form}
             field={:checkbox_form}
@@ -110,7 +132,7 @@ defmodule TodoCollabWeb.TodoLive do
             value={to_string(todo.done)}
             class="!line-through"
             phx-click="toggle_checkbox"
-            phx-value-todo-id={todo.id}
+            phx-value-todo-id={todo.uuid}
           />
 
           <%= render_trash(assigns, todo) %>
@@ -129,7 +151,7 @@ defmodule TodoCollabWeb.TodoLive do
         type="button"
         color="info"
         phx-click="delete_todo"
-        phx-value-todo-id={todo.id}
+        phx-value-todo-id={todo.uuid}
       >
         <Heroicons.trash solid />
       </.icon_button>
@@ -144,7 +166,9 @@ defmodule TodoCollabWeb.TodoLive do
       ) do
     socket =
       socket
-      |> assign(todos: todos ++ [%{id: "added-#{total_added + 1}", text: new_todo, done: false}])
+      |> assign(
+        todos: todos ++ [%{uuid: "added-#{total_added + 1}", text: new_todo, done: false}]
+      )
       |> assign(total_added: total_added + 1)
 
     IO.inspect("CREATING TODO")
@@ -164,7 +188,7 @@ defmodule TodoCollabWeb.TodoLive do
       Enum.reduce(todos, [], fn todo, acc ->
         todo =
           cond do
-            todo.id == id -> %{todo | done: !todo.done}
+            todo.uuid == id -> %{todo | done: !todo.done}
             true -> todo
           end
 
@@ -185,20 +209,39 @@ defmodule TodoCollabWeb.TodoLive do
     {:noreply, socket}
   end
 
-  def handle_event("delete_todo", %{"todo-id" => id}, socket = %{assigns: %{todos: todos}}) do
+  def handle_event(
+        "delete_todo",
+        %{"todo-id" => id},
+        socket = %{assigns: %{todos: todos, to_be_removed: to_be_removed}}
+      ) do
     todos =
       Enum.reduce(todos, [], fn todo, acc ->
         cond do
-          todo.id == id -> acc
+          todo.uuid == id -> acc
           true -> acc ++ [todo]
         end
       end)
 
-    IO.inspect(todos, label: "todos final")
+    to_be_removed = update_to_be_removed(id, to_be_removed)
 
-    socket = assign(socket, todos: todos)
+    socket = assign(socket, todos: todos, to_be_removed: to_be_removed)
 
     {:noreply, socket}
+  end
+
+  def handle_event(
+        "save_list",
+        _value,
+        socket = %{assigns: %{todos: todos, to_be_removed: to_be_removed, list_id: list_id}}
+      ) do
+    case SaveList.call(list_id, todos, to_be_removed) do
+      {:ok, list_id} ->
+        todos = Todos.list_todos(list_id)
+        {:noreply, assign(socket, list_id: list_id, todos: todos)}
+
+      {:error, _} ->
+        {:noreply, assign(socket, list_id: list_id, todos: todos)}
+    end
   end
 
   @impl true
@@ -209,4 +252,26 @@ defmodule TodoCollabWeb.TodoLive do
   def handle_event("close_slide_over", _, socket) do
     {:noreply, push_patch(socket, to: "/live")}
   end
+
+  defp load_todos(%{"list" => list_uid}) do
+    pid = self()
+
+    Task.start(fn ->
+      list_id = Lists.get_id(list_uid)
+      todos = Todos.list_todos(list_id)
+      send(pid, %{loaded_todos: todos, list_id: list_id})
+    end)
+  end
+
+  defp load_todos(_params), do: :noop
+
+  defp update_to_be_removed(id, to_be_removed) do
+    case exists_in_db?(id) do
+      true -> to_be_removed ++ [id]
+      _ -> to_be_removed
+    end
+  end
+
+  defp exists_in_db?("added-" <> _), do: false
+  defp exists_in_db?(_), do: true
 end
