@@ -4,6 +4,8 @@ defmodule TodoCollabWeb.TodoLive do
   alias TodoCollab.Lists
   alias TodoCollab.Todos
 
+  alias TodoCollabWeb.UseCases.SaveList
+
   @impl true
   def mount(params, _session, socket) do
     load_todos(params)
@@ -17,7 +19,7 @@ defmodule TodoCollabWeb.TodoLive do
        list_uid: nil,
        total_added: 0,
        to_be_removed: [],
-       list_uid: nil
+       list_id: nil
      )}
   end
 
@@ -230,30 +232,16 @@ defmodule TodoCollabWeb.TodoLive do
   def handle_event(
         "save_list",
         _value,
-        socket = %{assigns: %{todos: todos, to_be_removed: to_be_removed, list_uid: list_uid}}
+        socket = %{assigns: %{todos: todos, to_be_removed: to_be_removed, list_id: list_id}}
       ) do
-    IO.inspect(todos, label: "saving todos")
-    IO.inspect(list_uid, label: "list_uid")
+    case SaveList.call(list_id, todos, to_be_removed) do
+      {:ok, list_id} ->
+        todos = Todos.list_todos(list_id)
+        {:noreply, assign(socket, list_id: list_id, todos: todos)}
 
-    case list_uid do
-      nil ->
-        list =
-          Lists.create(%{
-            name: "Todo Example 1",
-            user_name: "John Doe",
-            todos: todos
-          })
-
-        IO.inspect(list, label: "added list")
-        list.uid
-
-      _ ->
-        list_id = Lists.get_id(list_uid)
-        Todos.insert_todos(todos, list_id)
-        list_uid
+      {:error, _} ->
+        {:noreply, assign(socket, list_id: list_id, todos: todos)}
     end
-
-    {:noreply, assign(socket, list_uid: list_uid)}
   end
 
   @impl true
