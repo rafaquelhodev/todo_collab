@@ -1,11 +1,13 @@
 defmodule TodoCollabWeb.UserSessionController do
   use TodoCollabWeb, :controller
 
+  import Plug.Conn
+
   alias TodoCollab.Accounts
   alias TodoCollabWeb.UserAuth
 
   def new(conn, _params) do
-    render(conn, "new.html", error_message: nil)
+    render(conn, "new.html", error_message: get_session(conn, :error_message))
   end
 
   def create(conn, %{"user" => user_params}) do

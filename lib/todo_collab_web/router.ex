@@ -22,10 +22,16 @@ defmodule TodoCollabWeb.Router do
 
     get "/", PageController, :index
     live "/live", PageLive, :index
-    live "/todo", TodoLive, :index
+    # live "/todo", TodoLive, :index
     live "/live/modal/:size", PageLive, :modal
     live "/live/slide_over/:origin", PageLive, :slide_over
     live "/live/pagination/:page", PageLive, :pagination
+  end
+
+  scope "/todo", TodoCollabWeb do
+    pipe_through [:browser, :require_authenticated_user]
+
+    live "/", TodoLive, :index
   end
 
   # Other scopes may use custom stacks.
