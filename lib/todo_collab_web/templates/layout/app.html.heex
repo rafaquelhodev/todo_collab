@@ -1,5 +1,13 @@
 <main>
   <p class="alert alert-info" role="alert"><%= get_flash(@conn, :info) %></p>
-  <p class="alert alert-danger" role="alert"><%= get_flash(@conn, :error) %></p>
+  <p class="alert alert-danger" role="alert">
+    <%= if get_flash(@conn, :error) do %>
+      <div class="flex items-start mt-4">
+        <.alert with_icon color="danger">
+            <%= get_flash(@conn, :error) %>
+        </.alert>
+      </div>
+    <% end %>
+  </p>
   <%= @inner_content %>
 </main>
