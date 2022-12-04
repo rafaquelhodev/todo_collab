@@ -1,13 +1,7 @@
 <h1>Log in</h1>
 
 <.form :let={f} for={@conn} action={Routes.user_session_path(@conn, :create)} as={:user}>
-  <%= if @error_message do %>
-    <div class="flex items-start mt-4">
-      <.alert with_icon color="danger">
-        <%= @error_message %>
-      </.alert>
-    </div>
-  <% end %>
+
 
   <%= label(f, :email) %>
   <%= email_input(f, :email, required: true) %>

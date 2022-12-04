@@ -7,7 +7,7 @@ defmodule TodoCollabWeb.UserSessionController do
   alias TodoCollabWeb.UserAuth
 
   def new(conn, _params) do
-    render(conn, "new.html", error_message: get_session(conn, :error_message))
+    render(conn, "new.html", error_message: nil)
   end
 
   def create(conn, %{"user" => user_params}) do

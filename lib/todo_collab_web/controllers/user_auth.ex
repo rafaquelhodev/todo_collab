@@ -132,7 +132,7 @@ defmodule TodoCollabWeb.UserAuth do
       conn
     else
       conn
-      |> put_error_message("You must log in to access this page.")
+      |> put_flash(:error, "You must log in to access this page.")
       |> maybe_store_return_to()
       |> redirect(to: Routes.user_session_path(conn, :new))
       |> halt()
@@ -146,8 +146,4 @@ defmodule TodoCollabWeb.UserAuth do
   defp maybe_store_return_to(conn), do: conn
 
   defp signed_in_path(_conn), do: "/"
-
-  defp put_error_message(conn, error_message) do
-    put_session(conn, :error_message, error_message)
-  end
 end
